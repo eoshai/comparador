@@ -2,7 +2,7 @@
 // Lógica copiada sem alterações de comparador.html (pareamento + preço por unidade).
 
 /** URL base do proxy — única constante a alterar. */
-export const PROXY_BASE = import.meta.env.VITE_PROXY_BASE || "http://localhost:3000";
+export const PROXY_BASE = "https://comparador-proxy.onrender.com";
 
 export type Loja = "Atacadão" | "Mateus Mais";
 export interface Produto {
