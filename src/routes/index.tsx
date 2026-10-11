@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Moon, Sun, Search, Check, X, Loader2, Award, ArrowDown, ArrowUp, Plus } from "lucide-react";
+import { Moon, Sun, Search, Check, X, Loader2, Award, ArrowDown, ArrowUp, Plus, Apple, Milk, Sparkles, Bath } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { Carrinho, useCarrinho } from "@/components/Carrinho";
+import { Button } from "@/components/ui/button";
+import logoAsset from "@/assets/carrinho-logo.png.asset.json";
 import {
   brl, buscarAtacadao, buscarMateus, DEMO, norm, parear, precoUnit, rotuloUn,
   type Loja, type Produto,
@@ -28,7 +30,12 @@ const LOJAS: [Loja, (t: string) => Promise<Produto[]>][] = [
   ["Mateus Mais", buscarMateus],
 ];
 type St = { state: "loading" | "ok" | "err"; n?: number };
-const SUG = ["ovos", "leite", "arroz", "café", "amaciante"];
+const CATEGORIAS = [
+  { nome: "Alimentos", termo: "arroz", icon: Apple },
+  { nome: "Bebidas", termo: "suco", icon: Milk },
+  { nome: "Limpeza", termo: "detergente", icon: Sparkles },
+  { nome: "Higiene", termo: "sabonete", icon: Bath },
+];
 
 function Index() {
   // 1. Inicializa lendo direto do localStorage (evita atraso)
@@ -83,12 +90,13 @@ function Index() {
       )));
     const itens: Produto[] = []; const errs: string[] = [];
     res.forEach((r, k) => {
-      const n = LOJAS[k]![0];
+      const n = LOJAS[k]?.[0];
+      if (!n) return;
       if (r.status === "fulfilled") r.value.forEach((p, i) => { p.rank = i; itens.push(p); });
       else errs.push(n + ": " + (r.reason as Error).message);
     });
     if (errs.length) {
-      const falhou = LOJAS.filter((_, k) => res[k]!.status === "rejected").map((l) => l[0]);
+      const falhou = LOJAS.filter((_, k) => res[k]?.status === "rejected").map((l) => l[0]);
       DEMO.filter((d) => falhou.includes(d.loja)).forEach((p, i) => itens.push({ ...p, rank: i }));
     }
     setErros(errs); setItensBase(itens); setLoading(false);
@@ -105,9 +113,9 @@ function Index() {
     if (loja !== "todas") itens = itens.filter((p) => p.loja === loja);
     if (ord === "preco") itens.sort((a, b) => a.preco - b.preco);
     else if (ord === "un") itens.sort((a, b) => (precoUnit(a) ?? Infinity) - (precoUnit(b) ?? Infinity));
-    else itens.sort((a, b) => a.rank! - b.rank! || (a.loja < b.loja ? -1 : 1));
+    else itens.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || (a.loja < b.loja ? -1 : 1));
     let melhor: Produto | null = null;
-    itens.forEach((p) => { const u = precoUnit(p); if (u != null && (melhor === null || u < precoUnit(melhor)!)) melhor = p; });
+    itens.forEach((p) => { const u = precoUnit(p); if (u != null && (melhor === null || u < (precoUnit(melhor) ?? Infinity))) melhor = p; });
     const barato = itens.length ? itens.reduce((x, y) => (y.preco < x.preco ? y : x)) : null;
     return { itens, melhor, barato };
   }, [itensBase, termo, exato, soEq, loja, ord]);
@@ -141,11 +149,10 @@ function Index() {
       {/* Cabeçalho */}
       <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-orange-500" />
-            <span className="h-3 w-3 -ml-1 rounded-full bg-sky-500" />
-            <span className="ml-1 font-display text-lg font-bold">CarrinhoLeve</span>
-          </div>
+          <a href="/" aria-label="CarrinhoLeve — início" className="flex min-w-0 items-center gap-2">
+            <img src={logoAsset.url} alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded-md object-contain" />
+            <span className="font-display text-lg font-extrabold leading-none sm:text-xl">Carrinho<span className="text-primary">Leve</span></span>
+          </a>
           <div className="flex items-center gap-2">
             <Carrinho c={carrinho} />
             <button onClick={() => setDark(!dark)} aria-label="Alternar tema"
@@ -185,18 +192,21 @@ function Index() {
               className="mt-4 flex gap-2 rounded-full bg-card p-1 shadow-lg">
               <div className="flex flex-1 items-center gap-2 pl-3 text-foreground">
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busque leite, café, arroz..."
+                <input aria-label="Buscar produtos" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busque leite, café, arroz..."
                   className="w-full min-w-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground" />
               </div>
               <button className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110">Buscar</button>
             </form>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {SUG.map((s) => (
-                <button key={s} onClick={() => submit(s)}
-                  className="rounded-full border border-cream/25 bg-cream/10 px-3.5 py-1 text-sm transition hover:bg-cream/20">{s}</button>
+            <nav aria-label="Categorias rápidas" className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {CATEGORIAS.map(({ nome, termo: busca, icon: Icon }) => (
+                <Button key={nome} variant="secondary" onClick={() => submit(busca)}
+                  aria-pressed={termo === busca} title={`Buscar ${busca}`}
+                  className={`h-10 gap-2 rounded-lg border px-3 text-xs font-semibold tracking-normal ${termo === busca ? "border-deal bg-deal text-deal-foreground hover:bg-deal/90" : "border-secondary/30 bg-secondary text-secondary-foreground hover:bg-secondary/90"}`}>
+                  <Icon aria-hidden="true" />{nome}
+                </Button>
               ))}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2 min-h-8">
+            </nav>
+            <div className="mt-4 flex flex-wrap gap-2 min-h-8">
               {LOJAS.map(([n]) => {
                 const st = status[n]; if (!st) return null;
                 return (
@@ -236,7 +246,7 @@ function Index() {
             <Stat v={String(itens.length)} l="produtos" />
             <Stat v={String(cont("Atacadão"))} l="no Atacadão" dot="bg-orange-500" />
             <Stat v={String(cont("Mateus Mais"))} l="no Mateus Mais" dot="bg-sky-500" />
-            <Stat v={brl(barato!.preco)} l={`mais barato · ${barato!.loja}`} />
+            {barato && <Stat v={brl(barato.preco)} l={`mais barato · ${barato.loja}`} />}
           </div>
         )}
 
@@ -303,10 +313,10 @@ function Card({ p, i, best, onAdd }: { p: Produto; i: number; best: boolean; onA
     : p.nome;
   return (
     <article style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
-      className={`rise group relative flex flex-col rounded-3xl border bg-card p-3 transition hover:-translate-y-1 hover:shadow-xl ${best ? "border-moss ring-2 ring-moss/40" : "border-border"}`}>
+      className={`rise group relative flex flex-col rounded-3xl border bg-card p-3 transition hover:-translate-y-1 hover:shadow-xl ${best ? "border-deal ring-2 ring-deal/50" : "border-border"}`}>
       {best && (
-        <span className="absolute left-5 top-5 z-10 inline-flex items-center gap-1 rounded-full bg-moss px-2.5 py-1 text-[11px] font-bold text-forest shadow">
-          <Award className="h-3 w-3" /> Melhor preço/un
+        <span className="absolute left-3 right-3 top-3 z-10 inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg bg-deal px-2 py-1 text-center text-[11px] font-extrabold leading-tight text-deal-foreground shadow">
+          <Award className="h-4 w-4 shrink-0" /> Melhor preço/un
         </span>
       )}
       <div className="aspect-square overflow-hidden rounded-2xl bg-img p-4">
@@ -343,10 +353,10 @@ function Card({ p, i, best, onAdd }: { p: Produto; i: number; best: boolean; onA
             </b>{" "}que no {p.eq.loja} ({brl(p.eq.preco)})
           </div>
         )}
-        <button onClick={onAdd}
+        <Button onClick={onAdd}
           className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110">
           <Plus className="h-4 w-4" /> Adicionar
-        </button>
+        </Button>
       </div>
     </article>
   );
