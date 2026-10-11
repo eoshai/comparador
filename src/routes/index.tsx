@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { Carrinho, useCarrinho } from "@/components/Carrinho";
 import { Button } from "@/components/ui/button";
-import logoAsset from "@/assets/carrinho-logo.png.asset.json";
+import logoAsset from "@/assets/carrinho-icone.png.asset.json";
 import {
   brl, buscarAtacadao, buscarMateus, DEMO, norm, parear, precoUnit, rotuloUn,
   type Loja, type Produto,
